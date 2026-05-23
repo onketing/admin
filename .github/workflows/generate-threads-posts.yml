@@ -1,0 +1,621 @@
+name: 쓰레드 게시글 자동 생성
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 매일 KST 08:00 (UTC 23:00 전날)
+  workflow_dispatch:
+
+# 하루 8개 = 페르소나 4개 × 2개. 페르소나별 병렬 생성.
+
+jobs:
+  setup:
+    name: "🔍 직전 글 조회"
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 직전 게시글 조회
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import os, json, urllib.request
+
+          with open("/tmp/recent_posts.json", "w") as f:
+              json.dump([], f)
+
+          recent = []
+          try:
+              SUPABASE_URL = os.environ["SUPABASE_URL"]
+              SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+              headers = {
+                  "apikey": SERVICE_KEY,
+                  "Authorization": f"Bearer {SERVICE_KEY}",
+              }
+              query = (
+                  "threads_posts?select=topic,hook_pattern,persona,topic_tag,created_at,"
+                  "threads_post_segments(content,order_index)"
+                  "&order=created_at.desc&limit=30"
+              )
+              url = f"{SUPABASE_URL}/rest/v1/{query}"
+              req = urllib.request.Request(url, headers=headers, method="GET")
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  rows = json.loads(r.read())
+              for row in rows:
+                  segs = row.get("threads_post_segments") or []
+                  body = next(
+                      (s["content"] for s in segs if s.get("order_index") == 0),
+                      "",
+                  )
+                  recent.append({
+                      "persona": row.get("persona"),
+                      "topic": row.get("topic"),
+                      "hook_pattern": row.get("hook_pattern"),
+                      "topic_tag": row.get("topic_tag"),
+                      "created_at": row.get("created_at"),
+                      "segment_count": len(segs),
+                      "body_preview": (body or "")[:120],
+                  })
+              with open("/tmp/recent_posts.json", "w") as f:
+                  json.dump(recent, f, ensure_ascii=False, indent=2)
+              print(f"✅ 직전 게시글 {len(recent)}개 조회됨")
+          except Exception as e:
+              print(f"⚠️ 조회 실패 ({type(e).__name__}: {e}) — 빈 목록으로 진행")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recent-posts
+          path: /tmp/recent_posts.json
+
+  growth_hacker:
+    name: "🔵 그로스해커형"
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: recent-posts
+          path: /tmp
+
+      - name: "✍️ 2개 생성"
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools Bash --model claude-opus-4-7'
+          show_full_output: true
+          prompt: |
+            당신은 Threads 바이럴 콘텐츠 전문가입니다. growth_hacker 페르소나로 **2개**를 생성합니다.
+
+            먼저 전략 문서, 페르소나 프롬프트, 직전 글을 읽으세요:
+            ```bash
+            cat CONTENT_STRATEGY.md
+            cat prompts/growth_hacker.md
+            cat /tmp/recent_posts.json
+            ```
+
+            > **자동화 생성 안내**: `시작 전 필수 체크`와 `오늘 설정` 섹션은 수동 생성용이므로 건너뜁니다.
+            > 트랙·구조·훅 패턴·본문 길이·마무리 형식 등 모든 항목을 스스로 결정하고 바로 생성합니다.
+
+            ## 중복 검사 범위 (중요)
+            - `recent_posts.json`에서 **`persona`가 `growth_hacker`인 글**하고만 주제 중복을 피하세요.
+            - **주제명(topic)뿐 아니라 `body_preview`의 내용·각도·핵심 메시지까지 겹치지 않게.**
+            - 다른 페르소나 글은 신경 쓰지 않습니다.
+
+            ## 생성 규칙
+            - **트랙 A 1개 + 트랙 B 1개** 생성.
+            - **2개 중 1개는 체이닝 유도형, 1개는 리드 단독형.**
+            - 2개의 주제·각도·훅 패턴·구조·본문 길이·마무리가 서로 달라야 함.
+            - N/N 표기 금지. 본문·댓글 어디에도 외부 링크/CTA 금지.
+            - 질문형 마무리 연속 2개 절대 금지.
+
+            ## 1번 글
+            growth_hacker 직전 글과 안 겹치게 1개 생성 후 저장:
+            ```bash
+            python3 -c "
+            import json
+            post = {'persona':'growth_hacker','topic':'실제 주제','hook_pattern':3,'topic_tag':'선택한태그',
+                    'segments':[{'order_index':0,'content':'리드 글 — 체이닝형: 가장 궁금한 지점에서 툭 끊기 / 단독형: 완결. 링크/CTA 없음'}]}
+            # 체이닝 유도형이면 post['segments'] += [{'order_index':1,'content':'핵심 공개'}, ...] 추가(최대 6개)
+            json.dump(post, open('/tmp/growth_hacker_1.json','w'), ensure_ascii=False, indent=2)
+            print('growth_hacker_1 저장')
+            "
+            ```
+
+            ## 2번 글
+            ```bash
+            cat /tmp/growth_hacker_1.json
+            ```
+            1번 글 + growth_hacker 직전 글과 주제·각도·훅·구조가 모두 다르게 1개 생성
+            → `/tmp/growth_hacker_2.json`에 저장.
+
+            **Supabase 저장 금지. 파일 저장만.**
+
+      - name: "💾 Supabase 저장"
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import os, json, urllib.request
+
+          SUPABASE_URL = os.environ["SUPABASE_URL"]
+          SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+          headers = {
+              "apikey": SERVICE_KEY,
+              "Authorization": f"Bearer {SERVICE_KEY}",
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+          }
+
+          def supabase_post(path, body):
+              url = f"{SUPABASE_URL}/rest/v1/{path}"
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          for path in ["/tmp/growth_hacker_1.json", "/tmp/growth_hacker_2.json"]:
+              try:
+                  with open(path) as f:
+                      post = json.load(f)
+              except FileNotFoundError:
+                  print(f"⚠️ 누락: {path} — 건너뜀")
+                  continue
+              post.setdefault("persona", "growth_hacker")
+              rec = supabase_post("threads_posts", {
+                  "topic": post["topic"],
+                  "hook_pattern": post.get("hook_pattern"),
+                  "topic_tag": post.get("topic_tag"),
+                  "persona": post["persona"],
+                  "status": "draft",
+              })
+              post_id = rec[0]["id"]
+              print(f"✅ [{post['persona']}] 저장됨: {post_id}")
+              segs = [{"post_id": post_id, "order_index": s["order_index"], "content": s["content"]} for s in post["segments"]]
+              supabase_post("threads_post_segments", segs)
+              print(f"   세그먼트 {len(segs)}개 저장")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: posts-growth-hacker
+          path: /tmp/growth_hacker_*.json
+          if-no-files-found: warn
+
+  strategist:
+    name: "🟡 심리전략가형"
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: recent-posts
+          path: /tmp
+
+      - name: "✍️ 2개 생성"
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools Bash --model claude-opus-4-7'
+          show_full_output: true
+          prompt: |
+            당신은 Threads 바이럴 콘텐츠 전문가입니다. strategist 페르소나로 **2개**를 생성합니다.
+
+            먼저 전략 문서, 페르소나 프롬프트, 직전 글을 읽으세요:
+            ```bash
+            cat CONTENT_STRATEGY.md
+            cat prompts/strategist.md
+            cat /tmp/recent_posts.json
+            ```
+
+            > **자동화 생성 안내**: `시작 전 필수 체크`와 `오늘 설정` 섹션은 수동 생성용이므로 건너뜁니다.
+            > 트랙·구조·훅 패턴·본문 길이·마무리 형식 등 모든 항목을 스스로 결정하고 바로 생성합니다.
+
+            ## 중복 검사 범위 (중요)
+            - `recent_posts.json`에서 **`persona`가 `strategist`인 글**하고만 주제 중복을 피하세요.
+            - **주제명(topic)뿐 아니라 `body_preview`의 내용·각도·핵심 메시지까지 겹치지 않게.**
+            - 다른 페르소나 글은 신경 쓰지 않습니다.
+
+            ## 생성 규칙
+            - **트랙 A 1개 + 트랙 B 1개** 생성.
+            - **2개 중 1개는 체이닝 유도형, 1개는 리드 단독형.**
+            - 2개의 주제·각도·훅 패턴·구조·본문 길이·마무리가 서로 달라야 함.
+            - N/N 표기 금지. 본문·댓글 어디에도 외부 링크/CTA 금지.
+            - 질문형 마무리 연속 2개 절대 금지.
+
+            ## 1번 글
+            strategist 직전 글과 안 겹치게 1개 생성 후 저장:
+            ```bash
+            python3 -c "
+            import json
+            post = {'persona':'strategist','topic':'실제 주제','hook_pattern':2,'topic_tag':'선택한태그',
+                    'segments':[{'order_index':0,'content':'리드 글 — 체이닝형: 가장 궁금한 지점에서 툭 끊기 / 단독형: 완결. 링크/CTA 없음'}]}
+            # 체이닝 유도형이면 post['segments'] += [{'order_index':1,'content':'핵심 공개'}, ...] 추가(최대 6개)
+            json.dump(post, open('/tmp/strategist_1.json','w'), ensure_ascii=False, indent=2)
+            print('strategist_1 저장')
+            "
+            ```
+
+            ## 2번 글
+            ```bash
+            cat /tmp/strategist_1.json
+            ```
+            1번 글 + strategist 직전 글과 주제·각도·훅·구조가 모두 다르게 1개 생성
+            → `/tmp/strategist_2.json`에 저장.
+
+            **Supabase 저장 금지. 파일 저장만.**
+
+      - name: "💾 Supabase 저장"
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import os, json, urllib.request
+
+          SUPABASE_URL = os.environ["SUPABASE_URL"]
+          SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+          headers = {
+              "apikey": SERVICE_KEY,
+              "Authorization": f"Bearer {SERVICE_KEY}",
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+          }
+
+          def supabase_post(path, body):
+              url = f"{SUPABASE_URL}/rest/v1/{path}"
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          for path in ["/tmp/strategist_1.json", "/tmp/strategist_2.json"]:
+              try:
+                  with open(path) as f:
+                      post = json.load(f)
+              except FileNotFoundError:
+                  print(f"⚠️ 누락: {path} — 건너뜀")
+                  continue
+              post.setdefault("persona", "strategist")
+              rec = supabase_post("threads_posts", {
+                  "topic": post["topic"],
+                  "hook_pattern": post.get("hook_pattern"),
+                  "topic_tag": post.get("topic_tag"),
+                  "persona": post["persona"],
+                  "status": "draft",
+              })
+              post_id = rec[0]["id"]
+              print(f"✅ [{post['persona']}] 저장됨: {post_id}")
+              segs = [{"post_id": post_id, "order_index": s["order_index"], "content": s["content"]} for s in post["segments"]]
+              supabase_post("threads_post_segments", segs)
+              print(f"   세그먼트 {len(segs)}개 저장")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: posts-strategist
+          path: /tmp/strategist_*.json
+          if-no-files-found: warn
+
+  field_expert:
+    name: "🟢 필드전문가형"
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: recent-posts
+          path: /tmp
+
+      - name: "✍️ 2개 생성"
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools Bash --model claude-opus-4-7'
+          show_full_output: true
+          prompt: |
+            당신은 Threads 바이럴 콘텐츠 전문가입니다. field_expert 페르소나로 **2개**를 생성합니다.
+
+            먼저 전략 문서, 페르소나 프롬프트, 직전 글을 읽으세요:
+            ```bash
+            cat CONTENT_STRATEGY.md
+            cat prompts/field_expert.md
+            cat /tmp/recent_posts.json
+            ```
+
+            > **자동화 생성 안내**: `시작 전 필수 체크`와 `오늘 설정` 섹션은 수동 생성용이므로 건너뜁니다.
+            > 트랙·업종·구조·훅 패턴·본문 길이·마무리 형식 등 모든 항목을 스스로 결정하고 바로 생성합니다.
+
+            ## 중복 검사 범위 (중요)
+            - `recent_posts.json`에서 **`persona`가 `field_expert`인 글**하고만 주제·업종 중복을 피하세요.
+            - **주제명(topic)뿐 아니라 `body_preview`의 내용·각도·핵심 메시지까지 겹치지 않게.**
+            - 다른 페르소나 글은 신경 쓰지 않습니다.
+
+            ## 생성 규칙
+            - **트랙 B(마케팅 인사이트) 1개 + 트랙 A(전문직 케이스) 1개** 순서로 생성.
+            - **2개 중 1개는 체이닝 유도형, 1개는 리드 단독형.**
+            - 2개의 주제·업종·각도·훅 패턴·구조·본문 길이·마무리가 서로 달라야 함.
+            - N/N 표기 금지. 본문·댓글 어디에도 외부 링크/CTA 금지.
+            - 질문형 마무리 연속 2개 절대 금지.
+
+            ## 1번 글 — 트랙 B(마케팅 인사이트)
+            field_expert 직전 글과 안 겹치게 1개 생성 후 저장:
+            ```bash
+            python3 -c "
+            import json
+            post = {'persona':'field_expert','topic':'실제 주제','hook_pattern':1,'topic_tag':'선택한태그',
+                    'segments':[{'order_index':0,'content':'리드 글 — 체이닝형: 가장 궁금한 지점에서 툭 끊기 / 단독형: 완결. 링크/CTA 없음'}]}
+            # 체이닝 유도형이면 post['segments'] += [{'order_index':1,'content':'핵심 공개'}, ...] 추가(최대 6개)
+            json.dump(post, open('/tmp/field_expert_1.json','w'), ensure_ascii=False, indent=2)
+            print('field_expert_1 저장')
+            "
+            ```
+
+            ## 2번 글 — 트랙 A(전문직 케이스)
+            ```bash
+            cat /tmp/field_expert_1.json
+            ```
+            1번 글 + field_expert 직전 글과 주제·업종·구조가 다르게, 특정 업종 케이스 1개 생성
+            → `/tmp/field_expert_2.json`에 저장.
+
+            **Supabase 저장 금지. 파일 저장만.**
+
+      - name: "💾 Supabase 저장"
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import os, json, urllib.request
+
+          SUPABASE_URL = os.environ["SUPABASE_URL"]
+          SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+          headers = {
+              "apikey": SERVICE_KEY,
+              "Authorization": f"Bearer {SERVICE_KEY}",
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+          }
+
+          def supabase_post(path, body):
+              url = f"{SUPABASE_URL}/rest/v1/{path}"
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          for path in ["/tmp/field_expert_1.json", "/tmp/field_expert_2.json"]:
+              try:
+                  with open(path) as f:
+                      post = json.load(f)
+              except FileNotFoundError:
+                  print(f"⚠️ 누락: {path} — 건너뜀")
+                  continue
+              post.setdefault("persona", "field_expert")
+              rec = supabase_post("threads_posts", {
+                  "topic": post["topic"],
+                  "hook_pattern": post.get("hook_pattern"),
+                  "topic_tag": post.get("topic_tag"),
+                  "persona": post["persona"],
+                  "status": "draft",
+              })
+              post_id = rec[0]["id"]
+              print(f"✅ [{post['persona']}] 저장됨: {post_id}")
+              segs = [{"post_id": post_id, "order_index": s["order_index"], "content": s["content"]} for s in post["segments"]]
+              supabase_post("threads_post_segments", segs)
+              print(f"   세그먼트 {len(segs)}개 저장")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: posts-field-expert
+          path: /tmp/field_expert_*.json
+          if-no-files-found: warn
+
+  agency_brand:
+    name: "🟠 그로스웨이브"
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: recent-posts
+          path: /tmp
+
+      - name: "✍️ 2개 생성"
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools Bash --model claude-opus-4-7'
+          show_full_output: true
+          prompt: |
+            당신은 Threads 바이럴 콘텐츠 전문가입니다. agency_brand(그로스웨이브) 페르소나로 **2개**를 생성합니다.
+
+            먼저 전략 문서, 페르소나 프롬프트, 직전 글을 읽으세요:
+            ```bash
+            cat CONTENT_STRATEGY.md
+            cat prompts/agency_brand.md
+            cat /tmp/recent_posts.json
+            ```
+
+            > **자동화 생성 안내**: `시작 전 필수 체크`와 `오늘 설정` 섹션은 수동 생성용이므로 건너뜁니다.
+            > 케이스 선택·구조·훅 패턴·본문 길이·마무리 형식 등 모든 항목을 스스로 결정하고 바로 생성합니다.
+            > **케이스 소재는 반드시 `agency_brand.md`의 케이스 뱅크에 있는 것만 사용합니다. 없는 케이스를 만들어내지 말 것.**
+
+            ## 중복 검사 범위 (중요)
+            - `recent_posts.json`에서 **`persona`가 `agency_brand`인 글**하고만 주제·케이스 중복을 피하세요.
+            - 다른 페르소나 글은 신경 쓰지 않습니다.
+
+            ## 생성 규칙
+            - **트랙 A(클라이언트 케이스) 1개 + 트랙 B(대행사 관점 인사이트) 1개** 생성.
+            - **트랙 A는 체이닝 유도형 우선, 트랙 B는 리드 단독형 우선.**
+            - 2개의 케이스·주제·각도·구조·본문 길이·마무리가 서로 달라야 함.
+            - N/N 표기 금지. 본문·댓글 어디에도 외부 링크/CTA 금지.
+            - 질문형 마무리 연속 2개 절대 금지.
+
+            ## 1번 글 — 트랙 A(클라이언트 케이스)
+            agency_brand 직전 글과 안 겹치게 1개 생성 후 저장:
+            ```bash
+            python3 -c "
+            import json
+            post = {'persona':'agency_brand','topic':'실제 주제','hook_pattern':1,'topic_tag':'선택한태그',
+                    'segments':[{'order_index':0,'content':'리드 글 — 체이닝형: 가장 궁금한 지점에서 툭 끊기 / 단독형: 완결. 링크/CTA 없음'}]}
+            # 체이닝 유도형이면 post['segments'] += [{'order_index':1,'content':'핵심 공개'}, ...] 추가(최대 6개)
+            json.dump(post, open('/tmp/agency_brand_1.json','w'), ensure_ascii=False, indent=2)
+            print('agency_brand_1 저장')
+            "
+            ```
+
+            ## 2번 글 — 트랙 B(대행사 관점 인사이트)
+            ```bash
+            cat /tmp/agency_brand_1.json
+            ```
+            1번 글 + agency_brand 직전 글과 케이스·주제·각도·구조가 모두 다르게 1개 생성
+            → `/tmp/agency_brand_2.json`에 저장.
+
+            **Supabase 저장 금지. 파일 저장만.**
+
+      - name: "💾 Supabase 저장"
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python3 - <<'EOF'
+          import os, json, urllib.request
+
+          SUPABASE_URL = os.environ["SUPABASE_URL"]
+          SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+          headers = {
+              "apikey": SERVICE_KEY,
+              "Authorization": f"Bearer {SERVICE_KEY}",
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+          }
+
+          def supabase_post(path, body):
+              url = f"{SUPABASE_URL}/rest/v1/{path}"
+              data = json.dumps(body).encode()
+              req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read())
+
+          for path in ["/tmp/agency_brand_1.json", "/tmp/agency_brand_2.json"]:
+              try:
+                  with open(path) as f:
+                      post = json.load(f)
+              except FileNotFoundError:
+                  print(f"⚠️ 누락: {path} — 건너뜀")
+                  continue
+              post.setdefault("persona", "agency_brand")
+              rec = supabase_post("threads_posts", {
+                  "topic": post["topic"],
+                  "hook_pattern": post.get("hook_pattern"),
+                  "topic_tag": post.get("topic_tag"),
+                  "persona": post["persona"],
+                  "status": "draft",
+              })
+              post_id = rec[0]["id"]
+              print(f"✅ [{post['persona']}] 저장됨: {post_id}")
+              segs = [{"post_id": post_id, "order_index": s["order_index"], "content": s["content"]} for s in post["segments"]]
+              supabase_post("threads_post_segments", segs)
+              print(f"   세그먼트 {len(segs)}개 저장")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: posts-agency-brand
+          path: /tmp/agency_brand_*.json
+          if-no-files-found: warn
+
+  summary:
+    name: "📋 생성 완료"
+    needs: [growth_hacker, strategist, field_expert, agency_brand]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: posts-*
+          path: /tmp/posts
+          merge-multiple: true
+
+      - name: "📋 미리보기 (페르소나별)"
+        run: |
+          python3 - <<'EOF'
+          import json, glob
+          from collections import defaultdict
+
+          PERSONAS = [
+              ("growth_hacker",  "🔵 GROWTH_HACKER  · 그로스해커형"),
+              ("strategist",     "🟡 STRATEGIST     · 심리전략가형"),
+              ("field_expert",   "🟢 FIELD_EXPERT   · 필드전문가형"),
+              ("agency_brand",   "🟠 AGENCY_BRAND   · 그로스웨이브"),
+          ]
+
+          posts = []
+          for path in glob.glob("/tmp/posts/*.json"):
+              try:
+                  with open(path) as f:
+                      posts.append(json.load(f))
+              except Exception as e:
+                  print(f"⚠️ {path} 읽기 실패: {e}")
+
+          grouped = defaultdict(list)
+          for post in posts:
+              grouped[post.get("persona", "unknown")].append(post)
+
+          total = 0
+          for persona_key, persona_label in PERSONAS:
+              group = grouped.get(persona_key, [])
+              if not group:
+                  continue
+              print(f"\n{'█'*64}")
+              print(f"  {persona_label}  ({len(group)}개)")
+              print(f"{'█'*64}")
+              for idx, post in enumerate(group, 1):
+                  segs = sorted(post["segments"], key=lambda s: s["order_index"])
+                  print(f"\n  ┌─ [{idx}/{len(group)}]  {post['topic']}")
+                  print(f"  │  훅 패턴 {post.get('hook_pattern', '-')} · 세그먼트 {len(segs)}개")
+                  print(f"  └{'─'*58}")
+                  for seg in segs:
+                      tag = "📌 본문" if seg["order_index"] == 0 else f"💬 댓글 {seg['order_index']}"
+                      print(f"\n  [{tag}]")
+                      for line in seg["content"].splitlines():
+                          print(f"  {line}")
+                  total += 1
+
+          print(f"\n{'─'*64}")
+          print(f"  ✅ 총 {total}개 생성 완료")
+          print(f"{'─'*64}")
+          EOF
