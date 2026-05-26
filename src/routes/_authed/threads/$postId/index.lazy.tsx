@@ -208,7 +208,7 @@ function ThreadsPostDetailPage() {
                   <div className="flex h-9 w-9 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-violet-500 to-pink-500">
                     <span className="font-bold text-sm text-white">G</span>
                   </div>
-                  <span className="font-semibold text-[15px] text-gray-900 dark:text-white">growthwave</span>
+                  <span className="font-semibold text-[15px] text-gray-900 dark:text-white">onketing</span>
                   <svg className="h-[14px] w-[14px] shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle cx="12" cy="12" r="12" fill="#3B82F6" />
                     <path
@@ -467,7 +467,7 @@ function ReplySegment({ segment, index, total, isPublished, onChange, onDelete, 
       <div className="min-w-0 flex-1 pb-4">
         {/* 헤더 */}
         <div className="flex items-center gap-1">
-          <span className="font-semibold text-[14px] text-gray-900 dark:text-white">growthwave</span>
+          <span className="font-semibold text-[14px] text-gray-900 dark:text-white">onketing</span>
           <svg className="h-[13px] w-[13px] shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle cx="12" cy="12" r="12" fill="#3B82F6" />
             <path

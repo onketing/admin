@@ -78,10 +78,10 @@ export const LNB = ({ isOpen, onClose }: LNBProps) => {
         <Link to="/dashboard" onClick={onClose} className="flex items-center gap-2.5">
           <img
             src={theme === 'dark' ? '/logo_dark.png' : '/logo.png'}
-            alt="GrowthWave"
+            alt="Onketing"
             className="h-6 w-auto object-contain"
           />
-          <span className="font-semibold text-gray-900 text-sm dark:text-gray-100">GrowthWave</span>
+          <span className="font-semibold text-gray-900 text-sm dark:text-gray-100">Onketing</span>
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto p-3">
@@ -137,7 +137,7 @@ export const LNB = ({ isOpen, onClose }: LNBProps) => {
         </div>
       </nav>
       <div className="border-gray-200 border-t p-4 dark:border-gray-800">
-        <p className="text-center text-gray-400 text-xs dark:text-gray-400">그로스웨이브 업무 관리</p>
+        <p className="text-center text-gray-400 text-xs dark:text-gray-400">온케팅 업무 관리</p>
       </div>
     </aside>
   )

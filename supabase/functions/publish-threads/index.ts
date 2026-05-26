@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
   }
 
   // 블로그 링크는 본문/체인이 아니라 마지막 별도 답글로 부착 (Threads 도달 보호)
-  const BLOG_URL = Deno.env.get('BLOG_URL') || 'https://blog.naver.com/growthwave-'
+  const BLOG_URL = Deno.env.get('BLOG_URL') || 'https://blog.naver.com/onketing-'
   if (BLOG_URL) {
     try {
       await new Promise((r) => setTimeout(r, 1500))

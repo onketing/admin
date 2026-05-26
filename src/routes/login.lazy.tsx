@@ -13,8 +13,8 @@ import { signIn } from '@/features/auth/queries'
 import { writeCurrentMember } from '@/features/auth/useCurrentMember'
 import { useMembers } from '@/features/members/useMembers'
 
-const SHARED_ACCOUNT_EMAIL = 'growthwave@growthwave.kr'
-const SAVED_MEMBER_ID_KEY = 'growthwave_saved_member_id'
+const SHARED_ACCOUNT_EMAIL = 'onketing.3kim@gmail.com'
+const SAVED_MEMBER_ID_KEY = 'onketing_saved_member_id'
 
 const loginSchema = z.object({
   memberId: z.string().min(1, '멤버를 선택해주세요'),
@@ -90,13 +90,13 @@ function LoginPage() {
         <div className="relative z-10 flex flex-col items-center gap-8 text-center">
           <img
             src="/logo.png"
-            alt="GrowthWave"
+            alt="Onketing"
             width={64}
             height={64}
             className="h-16 w-auto object-contain brightness-0 drop-shadow-[0_0_24px_rgba(255,255,255,0.2)] invert"
           />
           <div className="space-y-3">
-            <h1 className="font-semibold text-4xl text-white tracking-tight">GrowthWave</h1>
+            <h1 className="font-semibold text-4xl text-white tracking-tight">Onketing</h1>
             <p className="max-w-xs text-base text-white/40 leading-relaxed">
               팀의 성장을 함께 설계하는
               <br />
@@ -104,14 +104,14 @@ function LoginPage() {
             </p>
           </div>
         </div>
-        <p className="absolute bottom-8 text-white/15 text-xs uppercase tracking-widest">© 2025 GrowthWave</p>
+        <p className="absolute bottom-8 text-white/15 text-xs uppercase tracking-widest">© 2025 Onketing</p>
       </div>
 
       {/* Right panel — form */}
       <div className="flex flex-1 items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-sm space-y-8">
           <div className="flex justify-center lg:hidden">
-            <img src="/logo.png" alt="GrowthWave" width={40} height={40} className="h-10 w-auto object-contain" />
+            <img src="/logo.png" alt="Onketing" width={40} height={40} className="h-10 w-auto object-contain" />
           </div>
 
           <div className="space-y-1.5">
