@@ -65,18 +65,18 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Already published' }), { status: 409 })
   }
 
-  // 페르소나별 계정 자격증명 분기.
-  // THREADS_USER_ID_<PERSONA> / THREADS_ACCESS_TOKEN_<PERSONA> 가 있으면 그것을,
-  // 없으면 기존 단일 THREADS_USER_ID / THREADS_ACCESS_TOKEN 로 폴백 (하위 호환).
-  const personaKey = String(post.persona ?? '').toUpperCase()
-  const USER_ID = (personaKey && Deno.env.get(`THREADS_USER_ID_${personaKey}`)) || Deno.env.get('THREADS_USER_ID')
-  const TOKEN =
-    (personaKey && Deno.env.get(`THREADS_ACCESS_TOKEN_${personaKey}`)) || Deno.env.get('THREADS_ACCESS_TOKEN')
+  // 계정(account)별 자격증명 분기. growthwave(테스트) | onketing(실제).
+  // THREADS_USER_ID_<ACCOUNT> / THREADS_ACCESS_TOKEN_<ACCOUNT> 로 라우팅.
+  // account 가 지정됐는데 해당 계정 토큰이 없으면 명확히 에러 (엉뚱한 계정 발행 방지).
+  // account 가 없을 때(레거시 행)만 단일 THREADS_USER_ID / THREADS_ACCESS_TOKEN 폴백.
+  const accountKey = String(post.account ?? '').toUpperCase()
+  const USER_ID = accountKey ? Deno.env.get(`THREADS_USER_ID_${accountKey}`) : Deno.env.get('THREADS_USER_ID')
+  const TOKEN = accountKey ? Deno.env.get(`THREADS_ACCESS_TOKEN_${accountKey}`) : Deno.env.get('THREADS_ACCESS_TOKEN')
 
   if (!USER_ID || !TOKEN) {
     return new Response(
       JSON.stringify({
-        error: `Threads 자격증명 없음 (persona=${post.persona ?? 'null'}). THREADS_USER_ID_${personaKey}/THREADS_ACCESS_TOKEN_${personaKey} 또는 기본 THREADS_USER_ID/THREADS_ACCESS_TOKEN 를 설정하세요.`,
+        error: `Threads 자격증명 없음 (account=${post.account ?? 'null'}). THREADS_USER_ID_${accountKey || '<ACCOUNT>'} / THREADS_ACCESS_TOKEN_${accountKey || '<ACCOUNT>'} 시크릿을 설정하세요.`,
       }),
       { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } },
     )
@@ -87,11 +87,19 @@ Deno.serve(async (req) => {
   )
 
   // 본문 생성 및 발행
-  const mainCreated = await threadsRequest(`${USER_ID}/threads`, {
+  // 토픽 태그는 최상위 글에만 적용 (1~50자, 마침표·앰퍼샌드 불가). 답글에는 적용되지 않는다.
+  const topicTag = String(post.topic_tag ?? '')
+    .replace(/^#/, '')
+    .replace(/[.&]/g, '')
+    .trim()
+    .slice(0, 50)
+  const mainParams: Record<string, string> = {
     media_type: 'TEXT',
     text: segments[0].content,
     access_token: TOKEN,
-  })
+  }
+  if (topicTag) mainParams.topic_tag = topicTag
+  const mainCreated = await threadsRequest(`${USER_ID}/threads`, mainParams)
   const mainPublished = await threadsRequest(`${USER_ID}/threads_publish`, {
     creation_id: mainCreated.id,
     access_token: TOKEN,
@@ -118,7 +126,11 @@ Deno.serve(async (req) => {
   }
 
   // 블로그 링크는 본문/체인이 아니라 마지막 별도 답글로 부착 (Threads 도달 보호)
-  const BLOG_URL = Deno.env.get('BLOG_URL') || 'https://blog.naver.com/onketing-'
+  // 계정별 블로그: BLOG_URL_<ACCOUNT> → BLOG_URL → 기본값
+  const BLOG_URL =
+    (accountKey && Deno.env.get(`BLOG_URL_${accountKey}`)) ||
+    Deno.env.get('BLOG_URL') ||
+    'https://blog.naver.com/onketing-'
   if (BLOG_URL) {
     try {
       await new Promise((r) => setTimeout(r, 1500))

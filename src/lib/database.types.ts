@@ -437,6 +437,7 @@ export type Database = {
       }
       threads_posts: {
         Row: {
+          account: string | null
           created_at: string
           generated_at: string
           hook_pattern: number | null
@@ -447,8 +448,10 @@ export type Database = {
           thread_post_id: string | null
           thread_post_url: string | null
           topic: string
+          topic_tag: string | null
         }
         Insert: {
+          account?: string | null
           created_at?: string
           generated_at?: string
           hook_pattern?: number | null
@@ -459,8 +462,10 @@ export type Database = {
           thread_post_id?: string | null
           thread_post_url?: string | null
           topic?: string
+          topic_tag?: string | null
         }
         Update: {
+          account?: string | null
           created_at?: string
           generated_at?: string
           hook_pattern?: number | null
@@ -471,6 +476,7 @@ export type Database = {
           thread_post_id?: string | null
           thread_post_url?: string | null
           topic?: string
+          topic_tag?: string | null
         }
         Relationships: []
       }

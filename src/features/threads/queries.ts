@@ -49,7 +49,9 @@ export const updateThreadsPostSegment = async (id: string, content: string) => {
 
 export const updateThreadsPost = async (
   id: string,
-  updates: Partial<Pick<ThreadsPost, 'topic' | 'status' | 'published_at' | 'thread_post_id' | 'thread_post_url'>>,
+  updates: Partial<
+    Pick<ThreadsPost, 'topic' | 'status' | 'published_at' | 'thread_post_id' | 'thread_post_url' | 'account'>
+  >,
 ) => {
   const { data, error } = await supabase.from('threads_posts').update(updates).eq('id', id).select().single()
   if (error) throw error

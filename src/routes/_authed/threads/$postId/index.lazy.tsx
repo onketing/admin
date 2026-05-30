@@ -21,7 +21,8 @@ import {
   saveThreadsPostSegments,
   updateThreadsPost,
 } from '@/features/threads/queries'
-import type { ThreadsPostSegment } from '@/features/threads/types'
+import type { ThreadsAccount, ThreadsPostSegment } from '@/features/threads/types'
+import { THREADS_ACCOUNT_LABELS, THREADS_ACCOUNTS } from '@/features/threads/types'
 import { cn } from '@/lib/utils'
 
 export const Route = createLazyFileRoute('/_authed/threads/$postId/')({
@@ -52,6 +53,7 @@ function ThreadsPostDetailPage() {
   })
 
   const [topic, setTopic] = useState('')
+  const [account, setAccount] = useState<ThreadsAccount>('growthwave')
   const [segments, setSegments] = useState<ThreadsPostSegment[]>([])
   const [deletedIds, setDeletedIds] = useState<string[]>([])
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
@@ -61,6 +63,7 @@ function ThreadsPostDetailPage() {
   useEffect(() => {
     if (post) {
       setTopic(post.topic)
+      setAccount(post.account ?? 'growthwave')
       setSegments(post.threads_post_segments)
     }
   }, [post])
@@ -71,7 +74,7 @@ function ThreadsPostDetailPage() {
       const existing = renumbered.filter((s) => !s.id.startsWith('temp-'))
       const created = renumbered.filter((s) => s.id.startsWith('temp-'))
       await Promise.all([
-        updateThreadsPost(postId, { topic }),
+        updateThreadsPost(postId, { topic, account }),
         deleteThreadsPostSegments(deletedIds),
         saveThreadsPostSegments(existing.map(({ id, content, order_index }) => ({ id, content, order_index }))),
       ])
@@ -206,9 +209,11 @@ function ThreadsPostDetailPage() {
                 {/* 프로필 */}
                 <div className="mb-3 flex items-center gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-violet-500 to-pink-500">
-                    <span className="font-bold text-sm text-white">G</span>
+                    <span className="font-bold text-sm text-white">{account === 'onketing' ? 'O' : 'G'}</span>
                   </div>
-                  <span className="font-semibold text-[15px] text-gray-900 dark:text-white">onketing</span>
+                  <span className="font-semibold text-[15px] text-gray-900 dark:text-white">
+                    {account === 'onketing' ? 'onketing.kr' : 'growth.wave_marketing'}
+                  </span>
                   <svg className="h-[14px] w-[14px] shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle cx="12" cy="12" r="12" fill="#3B82F6" />
                     <path
@@ -337,8 +342,30 @@ function ThreadsPostDetailPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>스레드에 발행하기</DialogTitle>
-            <DialogDescription>발행하면 Threads에 즉시 게시됩니다. 발행 후에는 수정할 수 없습니다.</DialogDescription>
+            <DialogDescription>
+              발행하면 선택한 계정의 Threads에 즉시 게시됩니다. 발행 후에는 수정할 수 없습니다.
+            </DialogDescription>
           </DialogHeader>
+          <div className="space-y-1.5">
+            <p className="font-medium text-gray-500 text-xs dark:text-gray-400">발행 계정</p>
+            <div className="grid grid-cols-2 gap-2">
+              {THREADS_ACCOUNTS.map((acc) => (
+                <button
+                  key={acc}
+                  type="button"
+                  onClick={() => setAccount(acc)}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-xs transition-colors',
+                    account === acc
+                      ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300',
+                  )}
+                >
+                  {THREADS_ACCOUNT_LABELS[acc]}
+                </button>
+              ))}
+            </div>
+          </div>
           <DialogFooter className="gap-2">
             <Button
               variant="outline"

@@ -17,7 +17,12 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { deleteThreadsPost, fetchThreadsPostsPage } from '@/features/threads/queries'
-import { THREADS_PERSONA_LABELS, type ThreadsPersona, type ThreadsPost } from '@/features/threads/types'
+import {
+  THREADS_ACCOUNT_LABELS,
+  THREADS_PERSONA_LABELS,
+  type ThreadsPersona,
+  type ThreadsPost,
+} from '@/features/threads/types'
 import { cn } from '@/lib/utils'
 
 const PERSONA_TABS: { value: ThreadsPersona | 'all'; label: string }[] = [
@@ -96,6 +101,7 @@ function ThreadsListPage() {
             <colgroup>
               <col />
               <col className="w-28" />
+              <col className="w-28" />
               <col className="w-24" />
               <col className="w-28" />
               <col className="w-28" />
@@ -109,6 +115,9 @@ function ThreadsListPage() {
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 text-xs uppercase tracking-wide dark:text-gray-400">
                   페르소나
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-500 text-xs uppercase tracking-wide dark:text-gray-400">
+                  계정
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-500 text-xs uppercase tracking-wide dark:text-gray-400">
                   상태
@@ -129,7 +138,7 @@ function ThreadsListPage() {
               {isLoading ? (
                 ['a', 'b', 'c', 'd'].map((k) => (
                   <tr key={k} className="h-[52px]">
-                    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                       <td key={i} className="px-4 py-2">
                         <div className="h-3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
                       </td>
@@ -138,7 +147,7 @@ function ThreadsListPage() {
                 ))
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-20">
+                  <td colSpan={8} className="py-20">
                     <div className="flex flex-col items-center gap-3 text-gray-300 dark:text-gray-600">
                       <MessageSquare className="h-8 w-8" />
                       <p className="text-sm">생성된 게시글이 없습니다</p>
@@ -165,6 +174,9 @@ function ThreadsListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <PersonaBadge persona={post.persona} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <AccountBadge account={post.account} />
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={post.status} />
@@ -275,6 +287,23 @@ function PersonaBadge({ persona }: { persona: ThreadsPost['persona'] }) {
   return (
     <Badge className="border-0 bg-indigo-50 text-indigo-600 text-xs dark:bg-indigo-900/30 dark:text-indigo-400">
       {THREADS_PERSONA_LABELS[persona]}
+    </Badge>
+  )
+}
+
+function AccountBadge({ account }: { account: ThreadsPost['account'] }) {
+  if (!account) return <span className="text-gray-300 text-xs dark:text-gray-600">-</span>
+  const isTest = account === 'growthwave'
+  return (
+    <Badge
+      className={cn(
+        'border-0 text-xs',
+        isTest
+          ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+          : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+      )}
+    >
+      {THREADS_ACCOUNT_LABELS[account]}
     </Badge>
   )
 }

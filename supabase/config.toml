@@ -1,0 +1,8 @@
+project_id = "xotoeymaxzkmwkgifymu"
+
+[auth]
+site_url = "https://onketing-admin.vercel.app"
+additional_redirect_urls = [
+  "https://onketing-admin.vercel.app/**",
+  "http://localhost:5173/**"
+]

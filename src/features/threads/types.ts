@@ -11,6 +11,15 @@ export const THREADS_PERSONA_LABELS: Record<ThreadsPersona, string> = {
 
 export const THREADS_PERSONAS = Object.keys(THREADS_PERSONA_LABELS) as ThreadsPersona[]
 
+export type ThreadsAccount = 'growthwave' | 'onketing'
+
+export const THREADS_ACCOUNT_LABELS: Record<ThreadsAccount, string> = {
+  growthwave: '그로스웨이브 (테스트)',
+  onketing: '온케팅',
+}
+
+export const THREADS_ACCOUNTS = Object.keys(THREADS_ACCOUNT_LABELS) as ThreadsAccount[]
+
 export type ThreadsPostSegment = {
   id: string
   post_id: string
@@ -26,6 +35,7 @@ export type ThreadsPost = {
   published_at: string | null
   status: ThreadsPostStatus
   persona: ThreadsPersona | null
+  account: ThreadsAccount | null
   topic: string
   hook_pattern: number | null
   topic_tag: string | null
