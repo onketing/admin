@@ -13,7 +13,6 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react'
-import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
 
 const navGroups = [
@@ -64,7 +63,6 @@ type LNBProps = {
 
 export const LNB = ({ isOpen, onClose }: LNBProps) => {
   const matchRoute = useMatchRoute()
-  const { theme } = useTheme()
 
   return (
     <aside
@@ -76,12 +74,8 @@ export const LNB = ({ isOpen, onClose }: LNBProps) => {
     >
       <div className="flex h-14 items-center border-gray-200 border-b px-5 dark:border-gray-800">
         <Link to="/dashboard" onClick={onClose} className="flex items-center gap-2.5">
-          <img
-            src={theme === 'dark' ? '/logo_dark.png' : '/logo.png'}
-            alt="Onketing"
-            className="h-6 w-auto object-contain"
-          />
-          <span className="font-semibold text-gray-900 text-sm dark:text-gray-100">Onketing</span>
+          <img src="/logo.png" alt="온케팅" className="h-6 w-auto object-contain" />
+          <span className="font-semibold text-gray-900 text-sm dark:text-gray-100">온케팅</span>
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto p-3">
