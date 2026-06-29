@@ -100,6 +100,7 @@ function DashboardPage() {
     prevTasks.reduce((s, t) => s + (t.execution_cost || 0), 0) +
     prevExpenses.filter((e) => e.entry_type === 'expense').reduce((s, e) => s + e.amount, 0)
   const prevProfit = prevRevenue - prevCost
+  const prevTaskRevenue = prevTasks.reduce((s, t) => s + (t.received_amount || 0), 0)
 
   // 미정산: always ALL tasks, no period filter
   const unsettledAmount = tasks
@@ -287,8 +288,8 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* Row 1: 3 large KPI cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Row 1: 4 large KPI cards */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label="총 수입"
             display={`+${formatCurrency(totalRevenue)}`}
@@ -308,6 +309,13 @@ function DashboardPage() {
             display={formatCurrency(totalProfit)}
             color={totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}
             delta={calcDeltaStr(totalProfit, prevProfit)}
+            isLoading={anyLoading}
+          />
+          <KpiCard
+            label="매출"
+            display={`+${formatCurrency(taskRevenue)}`}
+            color="text-emerald-600 dark:text-emerald-400"
+            delta={calcDeltaStr(taskRevenue, prevTaskRevenue)}
             isLoading={anyLoading}
           />
         </div>
