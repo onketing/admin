@@ -164,6 +164,18 @@ function DashboardPage() {
               </button>
             </div>
 
+            {/* 이번달 */}
+            <button
+              type="button"
+              onClick={() => {
+                setMonthDate(startOfMonth(new Date()))
+                setMode('month')
+              }}
+              className="rounded-md bg-gray-100 px-3 py-1.5 font-medium text-gray-500 text-xs transition-all hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              이번달
+            </button>
+
             {/* 전체 */}
             <button
               type="button"
