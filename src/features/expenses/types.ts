@@ -9,6 +9,7 @@ export type Expense = {
   id: string
   description: string
   amount: number
+  vat: number | null
   expense_date: string
   spender_member_id: string
   spender_name: string
@@ -29,6 +30,7 @@ export type Expense = {
 export type ExpenseFormData = {
   description: string
   amount: number
+  vat?: number | null
   expense_date: Date
   spender_member_id: string
   entry_type: EntryType
@@ -38,7 +40,6 @@ export type ExpenseFormData = {
 export type ExpenseRow = {
   id: string
   type: EntryType
-  source: 'task' | 'manual'
   description: string
   amount: number
   date: string

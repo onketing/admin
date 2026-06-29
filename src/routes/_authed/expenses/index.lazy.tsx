@@ -24,7 +24,6 @@ import { createExpense, fetchExpenses, softDeleteExpense, updateExpense } from '
 import { type EntryType, type Expense, type ExpenseFormData, PAGE_SIZE } from '@/features/expenses/types'
 import { useExpenseFilters } from '@/features/expenses/useExpenseFilters'
 import { useMembers } from '@/features/members/useMembers'
-import { fetchTasks } from '@/features/tasks/queries'
 import { STALE_FOREVER } from '@/lib/queryClient'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 
@@ -38,6 +37,7 @@ const expenseFormSchema = z.object({
   entry_type: z.enum(['income', 'expense'] as const),
   description: z.string().min(1, '내용을 입력해주세요'),
   amount: z.coerce.number().min(1, '금액을 입력해주세요'),
+  vat: z.coerce.number().nullable().optional(),
   expense_date: z.date(),
   spender_member_id: z.string().min(1, '담당자를 선택해주세요'),
   category_id: z.string().nullable().optional(),
@@ -66,6 +66,7 @@ function ExpenseFormDialog({
       entry_type: 'expense',
       description: '',
       amount: 0,
+      vat: null,
       expense_date: new Date(),
       spender_member_id: undefined,
       category_id: null,
@@ -148,6 +149,7 @@ function ExpenseFormDialog({
                       onValueChange={(v) => {
                         field.onChange(v)
                         if (v === 'income') form.setValue('category_id', null)
+                        else form.setValue('vat', null)
                       }}
                     >
                       <SelectTrigger className={cn(inputClass, 'w-full')}>
@@ -237,6 +239,27 @@ function ExpenseFormDialog({
                   </FormItem>
                 )}
               />
+              {entryType === 'income' && (
+                <FormField
+                  control={form.control as never}
+                  name="vat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldLabel>VAT</FieldLabel>
+                      <NumericFormat
+                        customInput={Input}
+                        thousandSeparator=","
+                        suffix="원"
+                        placeholder="부가세 (선택)"
+                        className={cn(inputClass, 'text-right tabular-nums')}
+                        value={(field.value as number | null) ?? ''}
+                        onValueChange={({ floatValue }) => field.onChange(floatValue ?? null)}
+                      />
+                      <FormMessage className="mt-1 text-xs" />
+                    </FormItem>
+                  )}
+                />
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control as never}
@@ -363,16 +386,6 @@ const ExpenseCard = ({ row, expenseCategories, onEdit, onDelete, onOpenAttachmen
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span
-            className={cn(
-              'inline-flex items-center whitespace-nowrap rounded-sm px-2 py-0.5 text-xs',
-              row.source === 'task'
-                ? 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-            )}
-          >
-            {row.source === 'task' ? '업무연동' : '직접등록'}
-          </span>
           {row.spender && <span className="text-gray-500 text-xs dark:text-gray-400">{row.spender}</span>}
         </div>
         {row.editable && (
@@ -435,12 +448,7 @@ function ExpensesPage() {
 
   const qc = useQueryClient()
 
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: fetchTasks,
-  })
-
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+  const { data: expenses = [], isLoading } = useQuery({
     queryKey: ['expenses'],
     queryFn: fetchExpenses,
   })
@@ -451,9 +459,7 @@ function ExpensesPage() {
     staleTime: STALE_FOREVER,
   })
 
-  const isLoading = tasksLoading || expensesLoading
-
-  const { allRows, filteredRows, sortedRows, summary } = useExpenseFilters(expenses, tasks, {
+  const { allRows, filteredRows, sortedRows, summary } = useExpenseFilters(expenses, {
     searchText,
     spenderFilter,
     dateFrom,
@@ -699,7 +705,6 @@ function ExpensesPage() {
                 <col />
                 <col className="w-32" />
                 <col className="w-24" />
-                <col className="w-24" />
                 <col className="w-28" />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-white dark:bg-gray-900">
@@ -719,9 +724,6 @@ function ExpensesPage() {
                   <th className="px-4 py-3 text-center font-semibold text-gray-500 text-xs uppercase tracking-wide dark:text-gray-300">
                     담당자
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-500 text-xs uppercase tracking-wide dark:text-gray-300">
-                    출처
-                  </th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -729,7 +731,7 @@ function ExpensesPage() {
                 {isLoading ? (
                   ['a', 'b', 'c', 'd', 'e', 'f'].map((k) => (
                     <tr key={k} className="h-[45px]">
-                      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                      {[1, 2, 3, 4, 5, 6].map((i) => (
                         <td key={i} className="px-4 py-2">
                           <div className="h-3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
                         </td>
@@ -738,7 +740,7 @@ function ExpensesPage() {
                   ))
                 ) : paginatedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-20 text-center text-gray-400 text-xs dark:text-gray-400">
+                    <td colSpan={6} className="py-20 text-center text-gray-400 text-xs dark:text-gray-400">
                       등록된 내역이 없습니다
                     </td>
                   </tr>
@@ -839,12 +841,6 @@ function ExpensesPage() {
                               </SelectContent>
                             </Select>
                           </td>
-                          {/* 출처 */}
-                          <td className="px-2 py-2 text-center">
-                            <span className="inline-flex items-center rounded-sm bg-blue-50 px-2 py-0.5 text-blue-600 text-xs dark:bg-blue-900/20 dark:text-blue-400">
-                              직접등록
-                            </span>
-                          </td>
                           {/* 저장/취소 */}
                           <td className="px-2 py-2">
                             <div className="flex items-center justify-center gap-0.5">
@@ -896,7 +892,7 @@ function ExpensesPage() {
                           </span>
                           <AttachmentThumbStrip
                             attachments={row.attachments}
-                            onOpen={() => setAttachmentExpenseId(row.source === 'manual' ? row.id : '')}
+                            onOpen={() => setAttachmentExpenseId(row.id)}
                             size={48}
                           />
                         </td>
@@ -913,18 +909,6 @@ function ExpensesPage() {
                         </td>
                         <td className="px-4 py-2 text-center text-gray-500 text-xs dark:text-gray-300">
                           {row.spender ?? '-'}
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span
-                            className={cn(
-                              'inline-flex items-center whitespace-nowrap rounded-sm px-2 py-0.5 text-xs',
-                              row.source === 'task'
-                                ? 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                                : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
-                            )}
-                          >
-                            {row.source === 'task' ? '업무연동' : '직접등록'}
-                          </span>
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex h-7 items-center justify-center gap-0.5">
@@ -1003,7 +987,7 @@ function ExpensesPage() {
                   }
                 }}
                 onDelete={() => setDeleteId(row.id)}
-                onOpenAttachment={() => setAttachmentExpenseId(row.source === 'manual' ? row.id : '')}
+                onOpenAttachment={() => setAttachmentExpenseId(row.id)}
               />
             ))
           )}

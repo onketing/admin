@@ -214,6 +214,7 @@ export type Database = {
           id: string
           spender_member_id: string
           updated_at: string | null
+          vat: number | null
         }
         Insert: {
           amount: number
@@ -226,6 +227,7 @@ export type Database = {
           id?: string
           spender_member_id: string
           updated_at?: string | null
+          vat?: number | null
         }
         Update: {
           amount?: number
@@ -238,6 +240,7 @@ export type Database = {
           id?: string
           spender_member_id?: string
           updated_at?: string | null
+          vat?: number | null
         }
         Relationships: [
           {
