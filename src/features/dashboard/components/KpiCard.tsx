@@ -6,6 +6,7 @@ export const KpiCard = ({
   display,
   color,
   delta,
+  sub,
   isLoading,
   small,
 }: {
@@ -13,6 +14,7 @@ export const KpiCard = ({
   display: string
   color: string
   delta?: string | null
+  sub?: string
   isLoading: boolean
   small?: boolean
 }) => (
@@ -36,6 +38,7 @@ export const KpiCard = ({
               {delta}
             </p>
           )}
+          {sub && <p className="font-medium text-gray-400 text-xs tabular-nums dark:text-gray-500">{sub}</p>}
         </div>
       )}
     </CardContent>

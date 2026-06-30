@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import type { Expense, ExpenseRow } from './types'
+import type { EntryType, Expense, ExpenseRow } from './types'
 
 type Filters = {
   searchText: string
   spenderFilter: string
   dateFrom: string | undefined
   dateTo: string | undefined
+  entryType: EntryType
 }
 
 type UseExpenseFiltersResult = {
@@ -13,31 +14,34 @@ type UseExpenseFiltersResult = {
   filteredRows: ExpenseRow[]
   sortedRows: ExpenseRow[]
   summary: {
-    totalIncome: number
-    totalExpense: number
-    netProfit: number
+    total: number
+    totalVat: number
+    grandTotal: number
   }
 }
 
 export const useExpenseFilters = (expenses: Expense[], filters: Filters): UseExpenseFiltersResult => {
-  const { searchText, spenderFilter, dateFrom, dateTo } = filters
+  const { searchText, spenderFilter, dateFrom, dateTo, entryType } = filters
 
   const allRows: ExpenseRow[] = useMemo(
     () =>
-      expenses.map((expense) => ({
-        id: expense.id,
-        type: expense.entry_type,
-        description: expense.description,
-        amount: expense.amount,
-        date: expense.expense_date,
-        spender: expense.spender_name,
-        spender_member_id: expense.spender_member_id,
-        category_id: expense.category_id,
-        editable: true,
-        attachment_count: expense.attachment_count,
-        attachments: expense.attachments,
-      })),
-    [expenses],
+      expenses
+        .filter((expense) => expense.entry_type === entryType)
+        .map((expense) => ({
+          id: expense.id,
+          type: expense.entry_type,
+          description: expense.description,
+          amount: expense.amount,
+          vat: expense.vat,
+          date: expense.expense_date,
+          spender: expense.spender_name,
+          spender_member_id: expense.spender_member_id,
+          category_id: expense.category_id,
+          editable: true,
+          attachment_count: expense.attachment_count,
+          attachments: expense.attachments,
+        })),
+    [expenses, entryType],
   )
 
   const filteredRows = useMemo(() => {
@@ -56,9 +60,9 @@ export const useExpenseFilters = (expenses: Expense[], filters: Filters): UseExp
   )
 
   const summary = useMemo(() => {
-    const totalIncome = filteredRows.filter((r) => r.type === 'income').reduce((sum, r) => sum + r.amount, 0)
-    const totalExpense = filteredRows.filter((r) => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0)
-    return { totalIncome, totalExpense, netProfit: totalIncome - totalExpense }
+    const total = filteredRows.reduce((sum, r) => sum + r.amount, 0)
+    const totalVat = filteredRows.reduce((sum, r) => sum + (r.vat ?? 0), 0)
+    return { total, totalVat, grandTotal: total + totalVat }
   }, [filteredRows])
 
   return { allRows, filteredRows, sortedRows, summary }

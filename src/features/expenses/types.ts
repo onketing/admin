@@ -42,6 +42,7 @@ export type ExpenseRow = {
   type: EntryType
   description: string
   amount: number
+  vat: number | null
   date: string
   spender: string | null
   spender_member_id: string | null

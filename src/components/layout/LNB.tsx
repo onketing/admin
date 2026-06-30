@@ -1,8 +1,6 @@
 import { Link, useMatchRoute } from '@tanstack/react-router'
 import {
   BookUser,
-  Building2,
-  CalendarDays,
   ClipboardList,
   FolderOpen,
   Inbox,
@@ -12,6 +10,7 @@ import {
   ScrollText,
   Tag,
   Trash2,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,15 +20,11 @@ const navGroups = [
   },
   {
     label: '업무',
-    items: [
-      { to: '/tasks', label: '업무 목록', icon: ClipboardList },
-      { to: '/calendar', label: '캘린더', icon: CalendarDays },
-    ],
+    items: [{ to: '/tasks', label: '업무 목록', icon: ClipboardList }],
   },
   {
     label: '고객/거래처',
     items: [
-      { to: '/clients', label: '거래처', icon: Building2 },
       { to: '/contacts', label: '고객 DB', icon: BookUser },
       { to: '/inquiries', label: '홈페이지 문의', icon: Inbox },
     ],
@@ -37,6 +32,7 @@ const navGroups = [
   {
     label: '재무',
     items: [
+      { to: '/income', label: '수입 내역', icon: Wallet },
       { to: '/expenses', label: '지출내역서', icon: Receipt },
       { to: '/expense-categories', label: '지출 카테고리', icon: FolderOpen },
     ],

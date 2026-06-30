@@ -53,6 +53,11 @@ function DashboardPage() {
     .reduce((s, e) => s + e.amount + (e.vat || 0), 0)
   const totalRevenue = taskRevenue + expenseIncome
 
+  // 총 매출에 포함된 VAT: 업무(VAT 포함분)의 received_amount/11 + 수입내역 vat
+  const taskVat = periodTasks.reduce((s, t) => s + (t.vat_included ? Math.round((t.received_amount || 0) / 11) : 0), 0)
+  const expenseVat = periodExpenses.filter((e) => e.entry_type === 'income').reduce((s, e) => s + (e.vat || 0), 0)
+  const totalVat = taskVat + expenseVat
+
   const taskCost = periodTasks.reduce((s, t) => s + (t.execution_cost || 0), 0)
   const expenseCost = periodExpenses.filter((e) => e.entry_type === 'expense').reduce((s, e) => s + e.amount, 0)
   const totalCost = taskCost + expenseCost
@@ -226,6 +231,7 @@ function DashboardPage() {
             label="총 매출"
             display={`+${formatCurrency(totalRevenue)}`}
             color="text-emerald-600 dark:text-emerald-400"
+            sub={`VAT ${formatCurrency(totalVat)} 포함`}
             isLoading={anyLoading}
           />
           <KpiCard

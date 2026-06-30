@@ -18,6 +18,7 @@ import { Route as AuthedThreadsIndexRouteImport } from './routes/_authed/threads
 import { Route as AuthedTasksIndexRouteImport } from './routes/_authed/tasks/index'
 import { Route as AuthedMarketingTypesIndexRouteImport } from './routes/_authed/marketing-types/index'
 import { Route as AuthedInquiriesIndexRouteImport } from './routes/_authed/inquiries/index'
+import { Route as AuthedIncomeIndexRouteImport } from './routes/_authed/income/index'
 import { Route as AuthedExpensesIndexRouteImport } from './routes/_authed/expenses/index'
 import { Route as AuthedExpenseCategoriesIndexRouteImport } from './routes/_authed/expense-categories/index'
 import { Route as AuthedContactsIndexRouteImport } from './routes/_authed/contacts/index'
@@ -87,6 +88,13 @@ const AuthedInquiriesIndexRoute = AuthedInquiriesIndexRouteImport.update({
   getParentRoute: () => AuthedRoute,
 } as any).lazy(() =>
   import('./routes/_authed/inquiries/index.lazy').then((d) => d.Route),
+)
+const AuthedIncomeIndexRoute = AuthedIncomeIndexRouteImport.update({
+  id: '/income/',
+  path: '/income/',
+  getParentRoute: () => AuthedRoute,
+} as any).lazy(() =>
+  import('./routes/_authed/income/index.lazy').then((d) => d.Route),
 )
 const AuthedExpensesIndexRoute = AuthedExpensesIndexRouteImport.update({
   id: '/expenses/',
@@ -194,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/contacts/': typeof AuthedContactsIndexRoute
   '/expense-categories/': typeof AuthedExpenseCategoriesIndexRoute
   '/expenses/': typeof AuthedExpensesIndexRoute
+  '/income/': typeof AuthedIncomeIndexRoute
   '/inquiries/': typeof AuthedInquiriesIndexRoute
   '/marketing-types/': typeof AuthedMarketingTypesIndexRoute
   '/tasks/': typeof AuthedTasksIndexRoute
@@ -216,6 +225,7 @@ export interface FileRoutesByTo {
   '/contacts': typeof AuthedContactsIndexRoute
   '/expense-categories': typeof AuthedExpenseCategoriesIndexRoute
   '/expenses': typeof AuthedExpensesIndexRoute
+  '/income': typeof AuthedIncomeIndexRoute
   '/inquiries': typeof AuthedInquiriesIndexRoute
   '/marketing-types': typeof AuthedMarketingTypesIndexRoute
   '/tasks': typeof AuthedTasksIndexRoute
@@ -240,6 +250,7 @@ export interface FileRoutesById {
   '/_authed/contacts/': typeof AuthedContactsIndexRoute
   '/_authed/expense-categories/': typeof AuthedExpenseCategoriesIndexRoute
   '/_authed/expenses/': typeof AuthedExpensesIndexRoute
+  '/_authed/income/': typeof AuthedIncomeIndexRoute
   '/_authed/inquiries/': typeof AuthedInquiriesIndexRoute
   '/_authed/marketing-types/': typeof AuthedMarketingTypesIndexRoute
   '/_authed/tasks/': typeof AuthedTasksIndexRoute
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/contacts/'
     | '/expense-categories/'
     | '/expenses/'
+    | '/income/'
     | '/inquiries/'
     | '/marketing-types/'
     | '/tasks/'
@@ -286,6 +298,7 @@ export interface FileRouteTypes {
     | '/contacts'
     | '/expense-categories'
     | '/expenses'
+    | '/income'
     | '/inquiries'
     | '/marketing-types'
     | '/tasks'
@@ -309,6 +322,7 @@ export interface FileRouteTypes {
     | '/_authed/contacts/'
     | '/_authed/expense-categories/'
     | '/_authed/expenses/'
+    | '/_authed/income/'
     | '/_authed/inquiries/'
     | '/_authed/marketing-types/'
     | '/_authed/tasks/'
@@ -390,6 +404,13 @@ declare module '@tanstack/react-router' {
       path: '/inquiries'
       fullPath: '/inquiries/'
       preLoaderRoute: typeof AuthedInquiriesIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/income/': {
+      id: '/_authed/income/'
+      path: '/income'
+      fullPath: '/income/'
+      preLoaderRoute: typeof AuthedIncomeIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/expenses/': {
@@ -488,6 +509,7 @@ interface AuthedRouteChildren {
   AuthedContactsIndexRoute: typeof AuthedContactsIndexRoute
   AuthedExpenseCategoriesIndexRoute: typeof AuthedExpenseCategoriesIndexRoute
   AuthedExpensesIndexRoute: typeof AuthedExpensesIndexRoute
+  AuthedIncomeIndexRoute: typeof AuthedIncomeIndexRoute
   AuthedInquiriesIndexRoute: typeof AuthedInquiriesIndexRoute
   AuthedMarketingTypesIndexRoute: typeof AuthedMarketingTypesIndexRoute
   AuthedTasksIndexRoute: typeof AuthedTasksIndexRoute
@@ -509,6 +531,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedContactsIndexRoute: AuthedContactsIndexRoute,
   AuthedExpenseCategoriesIndexRoute: AuthedExpenseCategoriesIndexRoute,
   AuthedExpensesIndexRoute: AuthedExpensesIndexRoute,
+  AuthedIncomeIndexRoute: AuthedIncomeIndexRoute,
   AuthedInquiriesIndexRoute: AuthedInquiriesIndexRoute,
   AuthedMarketingTypesIndexRoute: AuthedMarketingTypesIndexRoute,
   AuthedTasksIndexRoute: AuthedTasksIndexRoute,
